@@ -1,0 +1,222 @@
+/*
+Izvršiti restore baze prihodi.
+Kreirati klase:
+- u tabeli polisa_osiguranja na osnovu kolone uk_iznos po sljedećem principu:
+		1. ako je uk_iznos manji od 800 => 1
+		2. ako je uk_iznos veći od 800  i manji od 1000 => 2
+		3. ako je uk_iznos veći od 1000 => 3
+*/
+ALTER TABLE dbo.polisa_osiguranja
+ADD KlasaOsiguranja AS CAST
+(
+	CASE 
+	WHEN uk_iznos < 800 THEN 1
+	WHEN uk_iznos >= 800 AND uk_iznos < 1000 THEN 2
+	ELSE 3
+	END AS INT 
+)
+GO
+
+/*- u tabeli red_prihodi na osnovu kolone neto kreirati kolonu KlasaRedovnogPrihodaNeto po 
+	sljedećem principu:
+		1. ako je neto manji od 800 => 1
+		2. ako je neto veći od 800 i manji od 1100 => 2
+		3. ako je neto veći od 1100 i manji od 1400 => 3
+		4. ako je neto veći od 1400 i manji od 1700 => 4
+		5. ako je neto veći od 1700 => 5
+*/
+ALTER TABLE dbo.red_prihodi
+ADD KlasaRedovnogPrihodaNeto AS CAST 
+(
+	CASE
+	WHEN neto < 800 THEN 1 
+	WHEN neto >= 800 AND neto < 1100 THEN 2
+	WHEN neto >= 1100 AND neto < 1400 THEN 3
+	WHEN neto >= 1400 AND neto < 1700 THEN 4
+	ELSE 5
+	END AS INT
+)
+/*- u tabeli red_prihodi na osnovu kolone bruto kreirati kolonu KlasaRedovnogPrihodaBruto po sljedećem principu:
+		1. ako je bruto manji od 1250 => 1
+		2. ako je bruto veći od 1250 i manji od 1800 => 2
+		3. ako je bruto veći od 1800 i manji od 2350 => 3
+		4. ako je bruto veći od 2350 => 4
+*/
+ALTER TABLE dbo. red_prihodi
+ADD KlasaBruto AS cast
+(
+	CASE
+	WHEN bruto < 1250 THEN 1
+	WHEN bruto >= 1250 AND bruto < 1800 THEN 2
+	WHEN bruto >= 1800 AND bruto < 2350 THEN 3
+	ELSE 4
+	END AS INT
+)
+/*U bazi prihodi kreirati tabele:
+KlasaRedovnogPrihodaNeto
+KlasaRedovnogPrihodaBruto
+
+Struktura KlasaRedovnogPrihodaNeto
+KlasaRedovnogPrihodaNetoID, cjelobrojna varijabla, PK, inkrementalno povećavanje, poč. vr. 1
+NazivKlasaRedovnogPrihodaNeto, 20 unicode karaktera
+
+Struktura KlasaRedovnogPrihodaBruto
+KlasaRedovnogPrihodaBrutoID, cjelobrojna varijabla, PK, inkrementalno povećavanje, poč. vr. 1
+NazivKlasaRedovnogPrihodaBruto, 20 unicode karaktera*/
+
+CREATE TABLE KlasaRedovnogPrihodaNeto (
+	KlasaRedovnogPrihodaNetoID INT CONSTRAINT PK_KlasaRedovnogPrihodaNeto PRIMARY KEY(KlasaRedovnogPrihodaNetoID)
+	IDENTITY(1,1),
+	NazivKlasaRedovnogPrihodaNeto NVARCHAR(20)
+
+)
+
+CREATE TABLE KlasaRedovnogPrihodaBruto(
+	KlasaRedovnogPrihodaBrutoID INT CONSTRAINT PK_KlasaRedovnogPrihodaBruto PRIMARY KEY(KlasaRedovnogPrihodaBrutoID)
+	IDENTITY(1,1),
+	NazivKlasaRedovnogPrihodaBruto NVARCHAR(20)
+)
+
+/*Dodati vrijednosti za nazive klasa u tabelama:
+1. KlasaRedovnogPrihodaNeto
+	1 - klasa 1
+	2 - klasa 2
+	3 - klasa 3
+	4 - klasa 4
+	5 - klasa 5
+*/
+INSERT INTO KlasaRedovnogPrihodaNeto VALUES ('Klasa 1'), ('Klasa 2'), ('Klasa 3'), ('Klasa 4'), ('Klasa 5')
+/*
+2. KlasaRedovnogPrihodaBruto
+	1 - klasa 1
+	2 - klasa 2
+	3 - klasa 3
+	4 - klasa 4
+*/
+INSERT INTO KlasaRedovnogPrihodaBruto VALUES ('Klasa 1'), ('Klasa 2'), ('Klasa 3'), ('Klasa 4')
+
+/*ZADATAK
+U tabeli red_prihodi kreirati kolone klasa_neto i klasa_bruto, a zatim ih popuniti vrijednostima 
+iz kolona KlasaNeto, odnosno, KlasaBruto.
+*/
+ALTER TABLE dbo.red_prihodi
+ADD klasa_neto INT
+
+ALTER TABLE dbo.red_prihodi
+ADD klasa_bruto INT
+
+UPDATE dbo.red_prihodi
+SET klasa_bruto = KlasaBruto
+
+UPDATE dbo.red_prihodi
+SET klasa_neto = KlasaRedovnogPrihodaNeto
+
+SELECT * FROM dbo.red_prihodi
+/*ZADATAK
+Povezati tabele KlasaRedovnogPrihodaNeto i KlasaRedovnogPrihodaBruto sa tabelom red_prihodi.
+*/
+ALTER TABLE dbo.red_prihodi
+ADD CONSTRAINT FK_prihodi_KlasaRedovnogPrihodaNeto FOREIGN KEY (klasa_neto) REFERENCES
+KlasaRedovnogPrihodaNeto (KlasaRedovnogPrihodaNetoID)
+
+
+ALTER TABLE dbo.red_prihodi
+ADD CONSTRAINT FK_prihodi_KlasaRedovnogPrihodaBruto FOREIGN KEY (klasa_bruto) REFERENCES
+KlasaRedovnogPrihodaBruto (KlasaRedovnogPrihodaBrutoID)
+
+/*ZADATAK
+U redovnim prihodima baze prihodi zamijeniti NULL vrijednosti odgovarajućim vrijednostima.
+*/
+--redovni prihodi
+update red_prihodi
+set
+neto = 0,
+zdravstveno = 0,
+penzijsko = 0,
+bruto = 0
+where neto is null
+
+select * from red_prihodi
+
+
+CREATE DATABASE RedovniPrihodiDW
+
+use RedovniPrihodiDW
+
+/*1. DimOsoba 
+OsobaKey cjelobrojna varijabla, primarni ključ, inkrementalno uvećavanje za 1, poč.vr. 1
+OsobaID -  cjelobrojna varijabla
+PoslodavacID - cjelobrojna varijabla 
+GradID - cjelobrojna varijabla,
+
+2. DimTipRedovnogPrihoda
+TipRedovnogPrihodaKey - cjelobrojna varijabla, primarni ključ, inkrementalno uvećavanje za 1, poč.vr. 1
+TipRedovnogPrihodaID - cjelobrojna varijabla,
+NazivRedovnogPrihoda - 30 unicode karaktera
+*/
+
+CREATE TABLE DimOsoba 
+(
+OsobaKey INT CONSTRAINT PK_OsobaKey PRIMARY KEY IDENTITY (1,1),
+OsobaID INT,
+PoslodavacID INT,
+GradID INT
+)
+CREATE TABLE DimTipRedovnogPrihoda
+(
+TipRedovnogPrihodaKey INT CONSTRAINT PK_TipRedovnogPrihodaKey PRIMARY KEY IDENTITY (1,1),
+TipRedovnogPrihodaID INT,
+NazivRedovnogPrihoda NVARCHAR(30)
+)
+
+
+
+/*3. DimKlasaRedovnogPrihodaNeto
+KlasaRedovnogPrihodaNetoKey, primarni ključ, inkrementalno uvećavanje za 1, poč.vr. 1
+KlasaRedovnogPrihodaNetoID - cjelobrojna varijabla
+NazivKlasaRedovnogPrihodaNeto - 20 unicode karaktera
+
+4. DimKlasaRedovnogPrihodaBruto
+KlasaRedovnogPrihodaBrutoKey, primarni ključ, inkrementalno uvećavanje za 1, poč.vr. 1
+KlasaRedovnogPrihodaBrutoID - cjelobrojna varijabla,
+NazivKlasaRedovnogPrihodaBruto - 20 unicode karaktera
+*/
+
+CREATE TABLE DimKlasaRedovnogPrihodaNeto
+(
+KlasaRedovnogPrihodaNetoKey INT CONSTRAINT PK_KlasaRedovnogPrihodaNetoKey PRIMARY KEY IDENTITY (1,1),
+KlasaRedovnogPrihodaNetoID  INT,
+NazivKlasaRedovnogPrihodaNeto NVARCHAR(20)
+)
+
+CREATE TABLE DimKlasaRedovnogPrihodaBruto
+(
+KlasaRedovnogPrihodaBrutoKey INT CONSTRAINT PK_KlasaRedovnogPrihodaBrutoKey PRIMARY KEY IDENTITY (1,1),
+KlasaRedovnogPrihodaBrutoID  INT,
+NazivKlasaRedovnogPrihodaBruto NVARCHAR(20)
+)
+
+/*Tabela činjenica
+
+1. FactRedovniPrihodi
+FactRedovniPrihodiKey - primarni ključ, inkrementalno uvećavanje za 1, poč.vr. 1
+OsobaKey - cjelobrojna varijabla
+TipRedovnogPrihodaKey - cjelobrojna varijabla
+KlasaRedovnogPrihodaNetoKey - cjelobrojna varijabla
+KlasaRedovnogPrihodaBrutoKey - cjelobrojna varijabla
+RedovniPrihodiID - cjelobrojna varijabla
+RedovniPrihodi_Neto - decimalni broj oblika 6,2
+RedovniPrihodi_Bruto - decimalni broj oblika 6,2
+*/
+
+CREATE TABLE FactRedovniPrihodi
+(
+FactRedovniPrihodiKey INT CONSTRAINT PK_FactRedovniPrihodi PRIMARY KEY IDENTITY (1,1),
+OsobaKey INT CONSTRAINT FK_OsobaKey FOREIGN KEY (OsobaKey) REFERENCES DimOsoba (OsobaKey),
+TipRedovnogPrihodaKey INT CONSTRAINT FK_TipRedovnogPrihodaKey FOREIGN KEY (TipRedovnogPrihodaKey) REFERENCES DimTipRedovnogPrihoda (TipRedovnogPrihodaKey),
+KlasaRedovnogPrihodaNetoKey INT CONSTRAINT FK_KlasaRedovnogPrihodaNetoKey FOREIGN KEY (KlasaRedovnogPrihodaNetoKey) REFERENCES DimKlasaRedovnogPrihodaNeto (KlasaRedovnogPrihodaNetoKey),
+KlasaRedovnogPrihodaBrutoKey INT CONSTRAINT FK_KlasaRedovnogPrihodaBrutoKey FOREIGN KEY (KlasaRedovnogPrihodaBrutoKey) REFERENCES DimKlasaRedovnogPrihodaBruto (KlasaRedovnogPrihodaBrutoKey),
+RedovniPrihodiID int,
+RedovniPrihodi_Neto decimal (6,2),
+RedovniPrihodi_Bruto decimal(6,2)
+)
